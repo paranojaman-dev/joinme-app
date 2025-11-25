@@ -6,6 +6,7 @@ import 'profile_screen.dart';
 import 'filters_screen.dart';
 import 'chats_screen.dart';
 import 'create_event_screen.dart';
+import 'models/event.dart';
 
 void main() {
   runApp(JoinMeApp());
@@ -194,161 +195,275 @@ class _MainMapScreenState extends State<MainMapScreen> {
   }
 
   void _loadMarkers() {
-    markers.clear();
+    setState(() {
+      markers.clear();
 
-    // Dodaj marker aktualnej lokalizacji użytkownika (jeśli GPS działa)
-    if (_currentLocation != null) {
-      markers.add(
-        Marker(
-          markerId: MarkerId('my_location'),
-          position: _currentLocation!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: InfoWindow(
-            title: 'Twoja lokalizacja 🎯',
-            snippet: 'Jesteś tutaj! Kliknij przycisk GPS aby odświeżyć',
-          ),
-        ),
-      );
-    }
-
-    // DODAJ MARKERY EVENTÓW
-    for (var event in _activeEvents) {
-      if (event.isActive) {
+      // Dodaj marker aktualnej lokalizacji użytkownika (jeśli GPS działa)
+      if (_currentLocation != null) {
         markers.add(
           Marker(
-            markerId: MarkerId('event_${event.id}'),
-            position: event.location,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+            markerId: MarkerId('my_location'),
+            position: _currentLocation!,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
             infoWindow: InfoWindow(
-              title: '${event.emoji} ${event.activity}',
-              snippet: '${event.currentPeople}/${event.maxPeople} osób • ${event.time} • ${event.topic ?? "Brak tematu"}',
+              title: 'Twoja lokalizacja 🎯',
+              snippet: 'Jesteś tutaj! Kliknij przycisk GPS aby odświeżyć',
             ),
-            onTap: () => _showEventDetails(event),
           ),
         );
       }
-    }
 
-    // Dodaj markery innych użytkowników
-    for (var user in nearbyUsers) {
-      if (user.isActive) {
-        markers.add(
-          Marker(
-            markerId: MarkerId(user.name),
-            position: user.location,
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              _getColorHue(user.statusColor),
+      // DODAJ MARKERY EVENTÓW
+      for (var event in _activeEvents) {
+        if (event.isActive) {
+          markers.add(
+            Marker(
+              markerId: MarkerId('event_${event.id}'),
+              position: event.location,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+              infoWindow: InfoWindow(
+                title: '${event.emoji} ${event.activity}',
+                snippet: '${event.currentPeople}/${event.maxPeople} osób • ${event.time} • ${event.topic ?? "Brak tematu"}',
+              ),
+              onTap: () => _showEventDetails(event),
             ),
-            infoWindow: InfoWindow(
-              title: '${user.name} (${user.age})',
-              snippet: user.conversationTopic ?? 'Otwarty na rozmowę',
-            ),
-            onTap: () => _showUserProfile(user),
-          ),
-        );
+          );
+        }
       }
-    }
-    setState(() {});
+
+      // Dodaj markery innych użytkowników
+      for (var user in nearbyUsers) {
+        if (user.isActive) {
+          markers.add(
+            Marker(
+              markerId: MarkerId(user.name),
+              position: user.location,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                _getColorHue(user.statusColor),
+              ),
+              infoWindow: InfoWindow(
+                title: '${user.name} (${user.age})',
+                snippet: user.conversationTopic ?? 'Otwarty na rozmowę',
+              ),
+              onTap: () => _showUserProfile(user),
+            ),
+          );
+        }
+      }
+    });
   }
 
-  void _showEventDetails(Event event) {
+  void _showEventsList() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Color(0xFF2D3748),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Emoji i nazwa eventu
-            Text(
-              '${event.emoji} ${event.activity}',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            SizedBox(height: 10),
-
-            // Informacje o evencie
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.people, color: Colors.orange, size: 16),
-                SizedBox(width: 6),
-                Text(
-                  '${event.currentPeople}/${event.maxPeople} osób',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                SizedBox(width: 20),
-                Icon(Icons.access_time, color: Colors.orange, size: 16),
-                SizedBox(width: 6),
-                Text(
-                  event.time,
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-
-            // Temat
-            if (event.topic != null && event.topic!.isNotEmpty)
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Text(
-                'Temat: ${event.topic}',
-                style: TextStyle(color: Colors.blue[300], fontSize: 16),
-                textAlign: TextAlign.center,
+                'Aktywne Eventy (${_activeEvents.length})',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
+              SizedBox(height: 16),
 
-            SizedBox(height: 15),
-            Text(
-              'Stworzone przez: ${event.creatorName}',
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-            ),
-            SizedBox(height: 20),
-
-            // Przyciski akcji
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _joinEvent(event);
-                    Navigator.pop(context);
-                  },
-                  icon: Icon(Icons.group_add),
-                  label: Text('Dołącz'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+              if (_activeEvents.isEmpty)
+                Text(
+                  'Brak aktywnych eventów\nStwórz pierwszy! 🎉',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                  textAlign: TextAlign.center,
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _activeEvents.length,
+                    itemBuilder: (context, index) {
+                      final event = _activeEvents[index];
+                      return Card(
+                        color: Color(0xFF4A5568),
+                        margin: EdgeInsets.only(bottom: 10),
+                        child: ListTile(
+                          leading: Text(event.emoji, style: TextStyle(fontSize: 24)),
+                          title: Text(
+                            event.activity,
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            '${event.currentPeople}/${event.maxPeople} osób • ${event.time}',
+                            style: TextStyle(color: Colors.grey[300]),
+                          ),
+                          trailing: Icon(Icons.arrow_forward, color: Colors.orange),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showEventDetails(event);
+                            _zoomToEvent(event);
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ),
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Zamknij', style: TextStyle(color: Colors.white)),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey),
-                  ),
-                ),
-              ],
-            ),
 
-            // Jeśli to mój event, pokaż przycisk zakończenia
-            if (event.creatorName == userName) ...[
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _endEvent(event);
-                  Navigator.pop(context);
-                },
-                icon: Icon(Icons.stop),
-                label: Text('Zakończ Event'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+              SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Zamknij', style: TextStyle(color: Colors.white)),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey),
                 ),
               ),
             ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _zoomToEvent(Event event) {
+    mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(event.location, 16),
+    );
+  }
+
+  void _showEventDetails(Event event) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Color(0xFF2D3748),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header z ikoną zamknięcia
+                Stack(
+                  children: [
+                    Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${event.emoji} ${event.activity}',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        icon: Icon(Icons.close, color: Colors.white, size: 20),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 15),
+
+                // Informacje o evencie
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.people, color: Colors.orange, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      '${event.currentPeople}/${event.maxPeople} osób',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    SizedBox(width: 20),
+                    Icon(Icons.access_time, color: Colors.orange, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      event.time,
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+
+                // Temat
+                if (event.topic != null && event.topic!.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      'Temat: ${event.topic}',
+                      style: TextStyle(color: Colors.blue[300], fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                Text(
+                  'Stworzone przez: ${event.creatorName}',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                ),
+                SizedBox(height: 20),
+
+                // Przyciski akcji
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _joinEvent(event);
+                        Navigator.of(context).pop();
+                      },
+                      icon: Icon(Icons.group_add, size: 18),
+                      label: Text('Dołącz'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('Zamknij', style: TextStyle(color: Colors.white)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey),
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Jeśli to mój event, pokaż przycisk zakończenia
+                if (event.creatorName == userName) ...[
+                  SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _endEvent(event);
+                      Navigator.of(context).pop();
+                    },
+                    icon: Icon(Icons.stop, size: 18),
+                    label: Text('Zakończ Event'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -656,6 +771,94 @@ class _MainMapScreenState extends State<MainMapScreen> {
             ),
           ),
 
+          // INDIKATOR EVENTÓW + LISTA
+          Positioned(
+            top: 90,
+            left: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Indicator eventów
+                GestureDetector(
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          _activeEvents.isNotEmpty
+                              ? 'Masz ${_activeEvents.length} aktywnych eventów!'
+                              : 'Brak aktywnych eventów. Stwórz pierwszy! 🎉',
+                        ),
+                        backgroundColor: _activeEvents.isNotEmpty ? Colors.orange : Colors.grey,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _activeEvents.isNotEmpty ? Colors.orange : Colors.grey[700],
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 5,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _activeEvents.isNotEmpty ? Icons.event_available : Icons.event_busy,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          _activeEvents.isNotEmpty
+                              ? '${_activeEvents.length} aktywnych'
+                              : 'Brak eventów',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Przycisk listy eventów
+                if (_activeEvents.isNotEmpty) ...[
+                  SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: _showEventsList,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.purple,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 5,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.list, color: Colors.white, size: 14),
+                          SizedBox(width: 6),
+                          Text(
+                            'Pokaż listę',
+                            style: TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
           // DOLNA NAKŁADKA - Profil i znajomi
           Positioned(
             bottom: 0,
@@ -882,31 +1085,4 @@ class User {
 
   User(this.name, this.age, this.statusColor, this.location,
       this.conversationTopic, this.avatar, this.isActive);
-}
-
-// NOWA KLASA EVENT
-class Event {
-  final String id;
-  final String activity;
-  final String emoji;
-  final int maxPeople;
-  final int currentPeople;
-  final String time;
-  final String? topic;
-  final LatLng location;
-  final String creatorName;
-  final bool isActive;
-
-  Event({
-    required this.id,
-    required this.activity,
-    required this.emoji,
-    required this.maxPeople,
-    required this.currentPeople,
-    required this.time,
-    required this.topic,
-    required this.location,
-    required this.creatorName,
-    this.isActive = true,
-  });
 }
