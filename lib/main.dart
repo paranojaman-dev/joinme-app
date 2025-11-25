@@ -6,6 +6,7 @@ import 'profile_screen.dart';
 import 'filters_screen.dart';
 import 'chats_screen.dart';
 import 'create_event_screen.dart';
+import 'settings_screen.dart';
 import 'models/event.dart';
 
 void main() {
@@ -737,6 +738,18 @@ class _MainMapScreenState extends State<MainMapScreen> {
                       size: 30,
                     ),
                     tooltip: 'Stwórz event',
+                  ),
+
+                  // 🆕 NOWY: Przycisk ustawień
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SettingsScreen()),
+                      );
+                    },
+                    icon: Icon(Icons.settings, color: Colors.grey[300]),
+                    tooltip: 'Ustawienia',
                   ),
 
                   // Przycisk zmiany statusu
